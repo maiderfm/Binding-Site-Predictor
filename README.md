@@ -84,10 +84,10 @@ This output allows you to both programmatically and visually assess the predicte
 
 In this example, we will use the **1a3n.pdb** file, which represents the structure of **Hemoglobin**, a protein responsible for oxygen transport in red blood cells. Hemoglobin binds to oxygen in the lungs and releases it in tissues that need it. Studying the binding sites in hemoglobin is critical for understanding diseases like sickle cell anemia and understanding how small molecules, such as drugs or oxygen-binding enhancers, might interact with it.
 
-To predict the binding sites of hemoglobin using a custom-trained model, run the following command:
+To predict the binding sites of hemoglobin using a custom-trained model, run the following command from inside the project directory:
 
 ```bash
-python BindingSitePredictor.py 1a3n.pdb --model custom_model.pkl
+python BindingSitePredictor.py ./ExampleAnalysis/1a3n.pdb --model custom_model.pkl
 ```
 This command will generate the following files:
 
@@ -101,8 +101,8 @@ This command will generate the following files:
 
 The Chimera or PyMOL scripts can then be loaded into their respective programs for 3D visualization of the predicted binding sites.
 ```bash
-chimera 1a3n.cmd 
-pymol 1a3n.pml 
+chimera ./ExampleAnalysis/1a3n.cmd 
+pymol ./ExampleAnalysis/1a3n.pml 
 ```
 ---
 
