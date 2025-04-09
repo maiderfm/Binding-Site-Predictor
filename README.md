@@ -56,6 +56,8 @@ Input can be PDB file(s), a directory of PDB files, or file containing list of P
 - `--skip-depth`     Prediction skips residue depth calculation (default: true)
 - `--clean-dir`      Directory to store cleaned PDB files (default: cleaned_pdbs)
 
+---
+
 ## Output
 
 After running the predictor, the output directory will contain the following files (all named based on your input PDB file basename):
@@ -76,7 +78,9 @@ After running the predictor, the output directory will contain the following fil
 
 This output allows you to both programmatically and visually assess the predicted binding residues for further analysis or presentation.
 
-#### Analysis example
+---
+
+## Analysis example
 
 In this example, we will use the **1a3n.pdb** file, which represents the structure of **Hemoglobin**, a protein responsible for oxygen transport in red blood cells. Hemoglobin binds to oxygen in the lungs and releases it in tissues that need it. Studying the binding sites in hemoglobin is critical for understanding diseases like sickle cell anemia and understanding how small molecules, such as drugs or oxygen-binding enhancers, might interact with it.
 
@@ -100,7 +104,7 @@ The Chimera or PyMOL scripts can then be loaded into their respective programs f
 chimera 1a3n.cmd 
 pymol 1a3n.pml 
 ```
-
+---
 
 
 
