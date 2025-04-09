@@ -51,10 +51,10 @@ python BindingSitePredictor.py path/to/structure.pdb --model model.pkl
 Input can be PDB file(s), a directory of PDB files, or file containing list of PDB files. The files must have .pdb or .ent as file extensions for the program to run.
 
 #### Optional Arguments
-`-h, --help`       Show help page
-`--model`          Path to a custom trained model (default: model.pkl)
-`--skip-depth`     Prediction skips residue depth calculation (default: true)
-`--clean-dir`      Directory to store cleaned PDB files (default: cleaned_pdbs)
+- `-h, --help`       Show help page
+- `--model`          Path to a custom trained model (default: model.pkl)
+- `--skip-depth`     Prediction skips residue depth calculation (default: true)
+- `--clean-dir`      Directory to store cleaned PDB files (default: cleaned_pdbs)
 
 ## Output
 
