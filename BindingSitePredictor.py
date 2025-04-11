@@ -24,7 +24,7 @@ import pickle
 import numpy as np
 import pandas as pd
 import glob
-import feature_extraction as fe
+import feature_extraction_01 as fe
 from Bio.PDB import PDBParser, PDBIO, Select
 from argparse import ArgumentParser
 from joblib import load

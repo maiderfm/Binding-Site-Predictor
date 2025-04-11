@@ -1,0 +1,12 @@
+Predicted Active Site Residues:
+------------------------------
+B:30 - ARG
+B:92 - HIS
+D:30 - ARG
+D:92 - HIS
+D:97 - HIS
+
+Predicted Sites (grouped by chain):
+--------------------------------
+Site 1 (Chain B): ARG 30, HIS 92
+Site 2 (Chain D): ARG 30, HIS 92, HIS 97
