@@ -39,6 +39,25 @@ Once you're in the project directory, install the required Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
+Additionally, for full functionality, you'll need to install these external tools:
+
+- DSSP (mkdssp) - For secondary structure assignment
+```bash
+# On Ubuntu/Debian
+sudo apt-get install dssp
+
+# On macOS with Homebrew
+brew install brewsci/bio/dssp
+```
+
+- MSMS (optional) - For surface and depth calculations
+
+    Download from: https://ccsb.scripps.edu/mgltools/#msms
+    Add to your PATH environment variable
+
+
+
+Make sure these external tools are properly installed and accessible from your PATH for optimal prediction results.
 
 #### Usage
 
