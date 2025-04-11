@@ -106,7 +106,7 @@ In this example, we will use the **1a3n.pdb** file, which represents the structu
 To predict the binding sites of hemoglobin using a custom-trained model, run the following command from inside the project directory:
 
 ```bash
-python BindingSitePredictor.py ./ExampleAnalysis/1a3n.pdb --model custom_model.pkl
+python BindingSitePredictor.py ./ExampleAnalysis/1a3n.pdb --model random_forest_model.pkl
 ```
 This command will generate the following files:
 
