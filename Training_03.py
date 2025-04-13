@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, precision_recall_curve
+from sklearn.metrics import classification_report
 from sklearn.metrics import precision_score, recall_score, f1_score
 import joblib
 import gc
