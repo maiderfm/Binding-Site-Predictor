@@ -5,10 +5,8 @@ import csv
 import sys
 import subprocess
 import numpy as np
-from Bio.PDB import PDBParser, NeighborSearch, Selection, DSSP
+from Bio.PDB import PDBParser, NeighborSearch, Selection
 from Bio.PDB.ResidueDepth import get_surface, residue_depth
-from Bio.PDB.SASA import ShrakeRupley
-
 
 # Dictionary for aminoacid abbreviations
 AA_TRANSLATION = {
