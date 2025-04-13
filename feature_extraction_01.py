@@ -10,7 +10,7 @@ from Bio.PDB.ResidueDepth import get_surface, residue_depth
 from Bio.PDB.SASA import ShrakeRupley
 
 
-# Three-letter to one-letter amino acid conversion
+# Dictionary for aminoacid abbreviations
 AA_TRANSLATION = {
     "ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C",
     "GLU": "E", "GLN": "Q", "GLY": "G", "HIS": "H", "ILE": "I",
@@ -18,7 +18,7 @@ AA_TRANSLATION = {
     "SER": "S", "THR": "T", "TRP": "W", "TYR": "Y", "VAL": "V"
 }
 
-# Define amino acid properties
+# Definition of aminoacid properties
 AAT_PROPERTY = {
     "Hydrophobicity": {'1': 'RKEDQN', '2': 'GASTPHY', '3': 'CLVIMFW'}, #1:polar, 2: neutral, 3:hydrophobic
     "NormalizedVDWV": {'1': 'CGASTPD', '2': 'NVEQIL', '3': 'MHKFRYW'},
@@ -30,19 +30,16 @@ AAT_PROPERTY = {
     "H-Bond Propensity": {'1': 'RKEQNDSTYH','2': 'WC','3': 'AGPFLIVM'}
 }
 
+POLAR_CHARGED = 'RKEQDNHSTY'  
 
-# Definir residuos polares y cargados para cálculo de densidad
-POLAR_CHARGED = 'RKEQDNHSTY'  # Residuos polares y cargados
-
-# Function to extract features based on binding site sequences
 def extract_bs(subset_df):
+    """Returns a dictionary of binding sites aminoacids and positions"""
     binding_sites = {}
 
-    # Parse each row in the dataframe
     for _, row in subset_df.iterrows():
         protein_name = row['protein_name']
         chain_id = row['chain_id']
-        bs_list = row['binding_site_sequence'].split()  # Split into individual residues
+        bs_list = row['binding_site_sequence'].split()  
 
         if protein_name not in binding_sites:
             binding_sites[protein_name] = {}
@@ -50,19 +47,18 @@ def extract_bs(subset_df):
         if chain_id not in binding_sites[protein_name]:
             binding_sites[protein_name][chain_id] = set()
 
-        # Extract positions
         for binding in bs_list:
-            if len(binding) > 1 and binding[1:].isdigit():  # Ensure valid format
-                residue_position = int(binding[1:])  # Convert to int
+            if len(binding) > 1 and binding[1:].isdigit():  
+                residue_position = int(binding[1:])  
                 binding_sites[protein_name][chain_id].add(residue_position)
 
     return binding_sites
 
 def get_residue_properties(residue):
-    """Returns a dictionary of property values for a given residue (one-letter code)"""
+    """Returns a dictionary with aminoacid properties"""
     properties = {}
     for prop_name, prop_values in AAT_PROPERTY.items():
-        assigned_class = "NA"  # Default if residue is not found
+        assigned_class = "NA"  
         for class_id, aa_group in prop_values.items():
             if residue in aa_group:
                 assigned_class = class_id
@@ -71,37 +67,23 @@ def get_residue_properties(residue):
     return properties
 
 def clean_pdb_files(pdb_dir, output_dir=None):
-    """
-    Clean PDB files by:
-    1. Keeping only specific record types: HEADER, TITLE, ATOM, HETATM, TER, END
-    2. Keeping only the first MODEL if multiple models exist
-    
-    Args:
-        pdb_dir: Directory containing PDB files
-        output_dir: Directory to save cleaned files (if None, will use pdb_dir)
-    
-    Returns:
-        A list of paths to the cleaned PDB files
-    """
+    """Returns a list with the paths of the cleaned pdb files;
+    the pdb files are cleaned by keeping HEADER, TITLE, ATOM, HETATM, TER, END;
+    if multiple models of the opdb exist, only the first is kept"""
     
     if output_dir is None:
         output_dir = pdb_dir
     
-    # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
-    # List to store paths of cleaned files
     cleaned_files = []
     
-    # Regular expression pattern for lines to keep
     pattern = re.compile(r'^(HEADER|TITLE|ATOM|HETATM|TER|END)')
     
-    # Process each PDB file
     for filename in os.listdir(pdb_dir):
         if filename.endswith(".ent") or filename.endswith(".pdb"):
             input_path = os.path.join(pdb_dir, filename)
             
-            # Create output filename (keep same name but add _clean)
             base_name = os.path.splitext(filename)[0]
             output_filename = f"clean_{base_name}.pdb"
             output_path = os.path.join(output_dir, output_filename)
@@ -111,21 +93,20 @@ def clean_pdb_files(pdb_dir, output_dir=None):
                     lines = infile.readlines()
                 
                 new_pdb = []
-                in_model = False  # Flag to track first MODEL
+                in_model = False  
 
                 for line in lines:
                     if line.startswith("MODEL"):
                         if in_model:  
-                            break  # Si ya estábamos en un modelo, terminamos
-                        in_model = True  # Marcamos que estamos en el primer modelo
+                            break  
+                        in_model = True  
                     
                     if pattern.match(line) or in_model:
                         new_pdb.append(line)
                     
                     if line.startswith("ENDMDL"):
-                        break  # Terminamos cuando acaba el primer modelo
+                        break  
                 
-                # Escribir archivo limpio
                 with open(output_path, 'w') as outfile:
                     outfile.writelines(new_pdb)
 
@@ -135,177 +116,150 @@ def clean_pdb_files(pdb_dir, output_dir=None):
             except Exception as e:
                 print(f"Error processing {filename}: {str(e)}")
     
-    print(f"Cleaned {len(cleaned_files)} PDB files")
+    print(f"Cleaned {len(cleaned_files)} pdb files")
     return cleaned_files
 
 def parse_pdb(pdb_file):
-    """Extracts residue information from a PDB file, converting to one-letter amino acid codes"""
+    """Extract information of residues (residue, position, chain) from a pdb file"""
     residue_info = []
     try:
         with open(pdb_file, 'r') as file:
             for line in file:
-                if line.startswith("ATOM") and line[13:15].strip() == "CA":  # Extract only Cα atoms
+                if line.startswith("ATOM") and line[13:15].strip() == "CA": 
                     chain = line[21]
-                    
-                    # Check if there's enough data in the line to extract residue information
                     if len(line) > 26:
                         try:
                             three_letter_res = line[17:20].strip()
-                            position = int(line[22:26].strip())  # Convert to int for proper comparison
+                            position = int(line[22:26].strip())  
 
-                            # Convert to one-letter amino acid code
-                            one_letter_res = AA_TRANSLATION.get(three_letter_res, "X")  # "X" for unknown residues
+                            one_letter_res = AA_TRANSLATION.get(three_letter_res, "X")  
 
                             residue_info.append((position, one_letter_res, chain))
                         except ValueError:
-                            # Skip lines with invalid position information
                             continue
     except Exception as e:
-        print(f"Error parsing PDB file {pdb_file}: {str(e)}")
+        print(f"Error parsing pdb file {pdb_file}: {str(e)}")
     return residue_info
 
 def find_mkdssp_path():
-    """Find the full path to the mkdssp executable"""
+    """Find the full path for executable mkdssp api"""
     try:
-        # Try to get mkdssp path using the 'which' command
         result = subprocess.run(['which', 'mkdssp'], capture_output=True, text=True)
         if result.returncode == 0:
             return result.stdout.strip()
-        
-        # If 'which' failed, try common locations
         common_paths = [
             '/usr/bin/mkdssp',
             '/usr/local/bin/mkdssp',
-            '/opt/homebrew/bin/mkdssp',  # For Mac with Homebrew
+            '/opt/homebrew/bin/mkdssp',  
         ]
-        
         for path in common_paths:
             if os.path.exists(path) and os.access(path, os.X_OK):
                 return path
-        
         return None
-    
     except Exception as e:
-        print(f"Error finding mkdssp path: {str(e)}")
+        print(f"Error finding path of mkdssp: {str(e)}")
         return None
 
 def run_dssp_command_line(pdb_file, chain_id_mapping=None):
-    """Run DSSP directly using command line and parse the output file"""
+    """Run DSSP with mkdssp and manage the output file"""
+
     sec_struct_dict = {}
     
     try:
-        # Find the mkdssp executable
         mkdssp_path = find_mkdssp_path()
         if not mkdssp_path:
-            print("Could not find mkdssp executable. Skipping secondary structure analysis.")
+            print("Could not find mkdssp executable. Skipping the secondary structure analysis.")
             return sec_struct_dict
         
-        # Create a temporary output file
         output_file = f"{pdb_file}.dssp"
         
-        # Run mkdssp
         result = subprocess.run([mkdssp_path, pdb_file, output_file], 
                                capture_output=True, text=True)
         
-        # Check if the command was successful
         if result.returncode != 0:
-            print(f"DSSP command failed: {result.stderr}")
+            print(f"DSSP failed: {result.stderr}")
             return sec_struct_dict
         
-        # Parse the DSSP output file
         if os.path.exists(output_file):
             reading_data = False
             with open(output_file, 'r') as f:
                 for line in f:
-                    # Find the start of the data section
                     if line.strip().startswith("#  RESIDUE"):
                         reading_data = True
                         continue
                     
-                    if reading_data and len(line) > 17:  # Ensure line is long enough
+                    if reading_data and len(line) > 17:  
                         try:
                             chain = line[11].strip()
-                            if not chain:  # Some DSSP files might have empty chain IDs
+                            if not chain:  
                                 chain = " "
                                 
                             res_num = int(line[5:10].strip())
                             sec_struct = line[16].strip()
                             if not sec_struct:
-                                sec_struct = "-"  # Default for no structure
+                                sec_struct = "-"  
                             
                             if chain not in sec_struct_dict:
                                 sec_struct_dict[chain] = {}
                                 
                             sec_struct_dict[chain][res_num] = sec_struct
                         except (ValueError, IndexError) as e:
-                            # Skip problematic lines
                             continue
             
-            # Clean up the temporary file
             try:
                 os.remove(output_file)
             except:
                 pass
                 
     except Exception as e:
-        print(f"Error running DSSP for {pdb_file}: {str(e)}")
+        print(f"Error running DSSP of {pdb_file}: {str(e)}")
     
     return sec_struct_dict
 
 def extract_secondary_structure(pdb_file, structure=None):
-    """Extracts residue positions and secondary structure using DSSP, and calculates ASA values."""
+    """Extract secondary structure and asa value for each residue, including each position and chain""" 
+
     sec_struct_dict = {}
-    asa_dict = {}  # Dictionary to store ASA values
+    asa_dict = {}  
   
     try:    
-        # Find mkdssp path once
         mkdssp_path = find_mkdssp_path()
         if not mkdssp_path:
-            print("Could not find mkdssp executable. Skipping secondary structure analysis.")
+            print("Could not find mkdssp executable. Skipping the secondary structure analysis.")
             return sec_struct_dict, asa_dict
         
-        # Initialize structure if not provided
         if structure is None:
             parser = PDBParser(QUIET=True)
             structure = parser.get_structure("protein", pdb_file)
-        
-        # Second try: Direct command-line approach (already has the mkdssp_path from above)
-        print(f"Trying command-line DSSP for {pdb_file}")
-        
-        # Create a temporary output file
+                
         output_file = f"{pdb_file}.dssp"
         
-        # Run mkdssp
         result = subprocess.run([mkdssp_path, pdb_file, output_file], 
                                capture_output=True, text=True)
         
-        # Check if the command was successful
         if result.returncode != 0:
-            print(f"DSSP command failed: {result.stderr}")
+            print(f"DSSP failed: {result.stderr}")
             return sec_struct_dict, asa_dict
         
-        # Parse the DSSP output file
         if os.path.exists(output_file):
             reading_data = False
             with open(output_file, 'r') as f:
                 for line in f:
-                    # Find the start of the data section
                     if line.strip().startswith("#  RESIDUE"):
                         reading_data = True
                         continue
                     
-                    if reading_data and len(line) > 35:  # Ensure line is long enough for ASA (column 36-38)
+                    if reading_data and len(line) > 35:  
                         try:
                             chain = line[11].strip()
-                            if not chain:  # Some DSSP files might have empty chain IDs
+                            if not chain:  
                                 chain = " "
                                 
                             res_num = int(line[5:10].strip())
                             sec_struct = line[16].strip()
                             if not sec_struct:
-                                sec_struct = "-"  # Default for no structure
+                                sec_struct = "-"  
                             
-                            # Extract ASA value (typically in columns 36-38)
                             asa_value = float(line[35:38].strip())
                             
                             if chain not in sec_struct_dict:
@@ -315,27 +269,24 @@ def extract_secondary_structure(pdb_file, structure=None):
                             sec_struct_dict[chain][res_num] = sec_struct
                             asa_dict[chain][res_num] = asa_value
                         except (ValueError, IndexError) as e:
-                            # Skip problematic lines
                             continue
             
-            # Clean up the temporary file
             try:
                 os.remove(output_file)
             except:
                 pass
                 
     except Exception as e:
-        print(f"Error processing structure for secondary structure on {pdb_file}: {str(e)}")
+        print(f"Error processing secondary structure of {pdb_file}: {str(e)}")
     
     return sec_struct_dict, asa_dict
     
 
 def calculate_residue_depths(structure, pdb_path):
-    """Calculate residue depths for all residues in the structure """
+    """Calculate and extract residue depth for each residue of each pdb file."""
     depth_dict = {}
     
     try:
-        # Check if MSMS is available
         msms_found = False
         msms_path = os.environ.get("PATH", "").split(os.pathsep)
         for path in msms_path:
@@ -344,14 +295,12 @@ def calculate_residue_depths(structure, pdb_path):
                 break
                 
         if not msms_found:
-            print(f"Warning: MSMS executable not found in PATH for {pdb_path}. Skipping depth calculations.")
+            print(f"MSMS executable not found. Skipping depth calculations.")
             return depth_dict
             
-        # Try to get surface using MSMS (only once per structure for efficiency)
         try:
             surface = get_surface(structure)
             
-            # Create a dictionary to store depth values by chain and residue position
             for model in structure:
                 for chain in model:
                     chain_id = chain.id
@@ -359,14 +308,12 @@ def calculate_residue_depths(structure, pdb_path):
                         depth_dict[chain_id] = {}
                     
                     for residue in chain:
-                        # Skip hetero-atoms and water
                         if residue.id[0] != " ":
                             continue
                         
-                        res_pos = residue.id[1]  # Residue position
+                        res_pos = residue.id[1] 
                         
                         try:
-                            # Calculate residue depth 
                             depth = residue_depth(residue, surface)
                             depth_dict[chain_id][res_pos] = depth
                         except Exception as e:
@@ -375,22 +322,16 @@ def calculate_residue_depths(structure, pdb_path):
         except Exception as e:
             print(f"Error generating surface for {pdb_path}: {e}")
             
-  
     except Exception as e:
-        print(f"Error in residue depth calculation for {pdb_path}: {e}")
-        print("Possible fix: Ensure the PDB file does not have duplicate atom positions.")
-   
-            
+        print(f"Error calculating depth for residue {pdb_path}: {e}")
+               
     return depth_dict
 
 def calculate_curvature(structure, radius=10.0):
-    """
-    Calcula una aproximación de la curvatura local para cada residuo.
-    Un valor positivo indica una superficie convexa, un valor negativo indica una cavidad.
-    """
+    """Calculate and extract the aproximation of the curvature for each residue of each pdb file"""
+
     curvature_dict = {}
     
-    # Get all atoms
     atom_list = Selection.unfold_entities(structure, 'A')
     ns = NeighborSearch(atom_list)
     
@@ -401,34 +342,27 @@ def calculate_curvature(structure, radius=10.0):
                 curvature_dict[chain_id] = {}
                 
             for residue in chain:
-                # Skip hetero-atoms and water
                 if residue.id[0] != " ":
                     continue
                     
                 res_pos = residue.id[1]
                 
                 try:
-                    # Check if it's a protein residue (has CA atom)
                     if 'CA' in residue:
                         ca_atom = residue['CA']
                         
-                        # Get neighboring atoms within radius
                         neighbors = ns.search(ca_atom.coord, radius, level='A')
                         
-                        # Calculate center of mass of neighboring atoms
                         if len(neighbors) > 1:
                             com = np.zeros(3)
                             for atom in neighbors:
                                 com += atom.coord
                             com /= len(neighbors)
                             
-                            # Vector from CA to center of mass - approximates surface normal
                             normal_vector = com - ca_atom.coord
                             
-                            # Distance from CA to center of mass
                             normal_length = np.linalg.norm(normal_vector)
                             
-                            # Consider direction
                             avg_vector = np.zeros(3)
                             for atom in atom_list:
                                 avg_vector += (atom.coord - ca_atom.coord)
@@ -437,34 +371,27 @@ def calculate_curvature(structure, radius=10.0):
                             dot_product = np.dot(normal_vector, avg_vector)
                             sign = -1 if dot_product < 0 else 1
                             
-                            # Store curvature value (signed distance to COM)
                             curvature_dict[chain_id][res_pos] = sign * normal_length
                         else:
                             curvature_dict[chain_id][res_pos] = 0.0
                     else:
-                        # For non-protein residues (like DNA/RNA), set to None instead of trying to calculate
                         curvature_dict[chain_id][res_pos] = None
                         
                 except Exception as e:
-                    # Handle error more gracefully - just set to None without printing error
-                    # print(f"Error calculating curvature for residue {residue.get_resname()} {res_pos}: {e}")
                     curvature_dict[chain_id][res_pos] = None
     
     return curvature_dict
 
 def get_structural_neighbors(structure, distance_threshold=5.0):
-    """
-    Encuentra los residuos vecinos dentro de un umbral de distancia específico.
-    Retorna un diccionario con información de vecindad.
-    """
+    """Return a dictionary with information about neigbors for each residue taking into account each position and chain;
+    it is based on the distance between residues"""
+
     neighbors_dict = {}
-    contact_freq_dict = {}  # Para almacenar la frecuencia de contacto
+    contact_freq_dict = {}  
     
-    # Get all atoms
     atom_list = Selection.unfold_entities(structure, 'A')
     ns = NeighborSearch(atom_list)
     
-    # First collect all residues
     all_residues = {}
     for model in structure:
         for chain in model:
@@ -475,65 +402,53 @@ def get_structural_neighbors(structure, distance_threshold=5.0):
                 contact_freq_dict[chain_id] = {}
             
             for residue in chain:
-                # Skip hetero-atoms and water
                 if residue.id[0] != " ":
                     continue
                 
                 res_pos = residue.id[1]
                 all_residues[chain_id][res_pos] = residue
     
-    # Now compute neighbors and contact frequency
     for chain_id, residues in all_residues.items():
         for res_pos, residue in residues.items():
             neighbors_dict[chain_id][res_pos] = []
             
-            # Count atom contacts for contact frequency
             contact_count = 0
             total_atoms = 0
             
             for atom in residue:
                 total_atoms += 1
                 
-                # Get atoms in contact with current atom
                 neighbors = ns.search(atom.coord, distance_threshold, level='A')
                 
-                # Count contacts with atoms from other residues
                 for neighbor_atom in neighbors:
-                    if neighbor_atom.get_parent() != residue:  # Different residue
+                    if neighbor_atom.get_parent() != residue:  
                         contact_count += 1
             
-            # Store normalized contact frequency (contacts per atom)
             contact_freq = contact_count / max(1, total_atoms)
             contact_freq_dict[chain_id][res_pos] = contact_count
             
-            # Get residue neighbors
             ca_neighbors = []
             if 'CA' in residue:
                 ca_atom = residue['CA']
                 neighbor_atoms = ns.search(ca_atom.coord, distance_threshold, level='R')
                 
                 for neighbor_res in neighbor_atoms:
-                    if neighbor_res != residue and neighbor_res.id[0] == " ":  # Skip self and non-standard residues
+                    if neighbor_res != residue and neighbor_res.id[0] == " ": 
                         neighbor_chain = neighbor_res.get_parent().id
                         neighbor_pos = neighbor_res.id[1]
                         
-                        # Store as "chain:position"
                         ca_neighbors.append(f"{neighbor_chain}:{neighbor_pos}")
             
-            # Store up to 10 closest neighbors to keep data size manageable
             neighbors_dict[chain_id][res_pos] = ",".join(ca_neighbors[:10]) if ca_neighbors else ""
     
     return neighbors_dict, contact_freq_dict
 
 def calculate_bfactor_and_polar_density(structure):
-    """
-    Extrae los B-factors y calcula la densidad de residuos polares/cargados alrededor
-    de cada residuo. Retorna dos diccionarios con los valores.
-    """
+    """Calculate and extract the b factor and the polar density for each residue in each pdb file."""
+
     bfactor_dict = {}
     polar_density_dict = {}
     
-    # Get all residues
     atom_list = Selection.unfold_entities(structure, 'A')
     ns = NeighborSearch(atom_list)
     
@@ -545,13 +460,11 @@ def calculate_bfactor_and_polar_density(structure):
                 polar_density_dict[chain_id] = {}
                 
             for residue in chain:
-                # Skip hetero-atoms and water
                 if residue.id[0] != " ":
                     continue
                     
                 res_pos = residue.id[1]
                 
-                # Get B-factor (average over atoms in residue)
                 bfactor_sum = 0.0
                 atom_count = 0
                 
@@ -560,19 +473,16 @@ def calculate_bfactor_and_polar_density(structure):
                         bfactor_sum += atom.bfactor
                         atom_count += 1
                 
-                # Store average B-factor
                 if atom_count > 0:
                     bfactor_dict[chain_id][res_pos] = bfactor_sum / atom_count
                 else:
                     bfactor_dict[chain_id][res_pos] = None
                 
-                # Calculate density of polar/charged residues within 8 Angstroms
                 try:
                     if 'CA' in residue:
                         ca_atom = residue['CA']
                         neighbor_residues = ns.search(ca_atom.coord, 8.0, level='R')
                         
-                        # Count polar/charged neighbors
                         total_neighbors = 0
                         polar_charged_count = 0
                         
@@ -580,14 +490,12 @@ def calculate_bfactor_and_polar_density(structure):
                             if neighbor != residue and neighbor.id[0] == " ":
                                 total_neighbors += 1
                                 
-                                # Check if it's a polar/charged residue
                                 res_name = neighbor.get_resname()
                                 one_letter = AA_TRANSLATION.get(res_name, "X")
                                 
                                 if one_letter in POLAR_CHARGED:
                                     polar_charged_count += 1
                         
-                        # Calculate density (percentage of polar/charged)
                         if total_neighbors > 0:
                             density = (polar_charged_count / total_neighbors) * 100
                         else:
@@ -602,41 +510,31 @@ def calculate_bfactor_and_polar_density(structure):
     
     return bfactor_dict, polar_density_dict
 
-def store_feature_value(pdb_dir, output_file="binding_features.csv", skip_depth=False, batch_size=100):
-    """Extracts and stores residue features from PDB files with periodic saving"""
-    # First, load BioLiP data and extract binding sites
+def store_feature_value(pdb_dir, output_file, skip_depth=False, batch_size=100):
+    """Store all predefined features for each residue of each pdb file."""
+
     binding_sites_dict = {}
+
     try:
         if os.path.exists('BioLiP_nr.txt'):
             df = pd.read_csv('BioLiP_nr.txt', delimiter='\t', low_memory=False, header=None)
-            subset_df = df[[0, 1, 7]]  # Select columns 0 and 7
-            subset_df.columns = ['protein_name', 'chain_id', 'binding_site_sequence']  # Rename columns
+            subset_df = df[[0, 1, 7]]  
+            subset_df.columns = ['protein_name', 'chain_id', 'binding_site_sequence']  
             binding_sites_dict = extract_bs(subset_df)
             print("Successfully loaded BioLiP data")
-        else:
-            print("Warning: BioLiP_nr.txt not found. Binding site information will not be available.")
     except Exception as e:
         print(f"Error loading BioLiP data: {str(e)}")
-
-    # Find and print DSSP executable path
-    mkdssp_path = find_mkdssp_path()
-    if mkdssp_path:
-        print(f"Found mkdssp at: {mkdssp_path}")
-    else:
-        print("WARNING: mkdssp executable not found. Secondary structure analysis will be limited.")
 
     all_features = []
     total_files = 0
     processed_files = 0
     
-    # Count total files for progress reporting
     for filename in os.listdir(pdb_dir):
         if filename.endswith(".pdb"):
             total_files += 1
     
     print(f"Found {total_files} .pdb files to process")
     
-    # Variables for batch processing
     batch_counter = 0
     batch_number = 1
     
@@ -646,36 +544,28 @@ def store_feature_value(pdb_dir, output_file="binding_features.csv", skip_depth=
             batch_counter += 1
             pdb_path = os.path.join(pdb_dir, filename)
             
-            # Process the filename to extract the protein name
             pdb_name = filename.rsplit('.pdb', 1)[0]
             if pdb_name.startswith("clean_pdb"):
-                pdb_name = pdb_name[9:]  # Remove the "pdb" prefix
+                pdb_name = pdb_name[9:]  
             
             print(f"Processing file {processed_files}/{total_files}: {filename} -> {pdb_name}")
             
-            # Set up parser and parse structure once
             parser = PDBParser(QUIET=True)
             try:
                 structure = parser.get_structure(pdb_name, pdb_path)
                 
-                # Extract secondary structure information and ASA
                 sec_struct_dict, asa_dict = extract_secondary_structure(pdb_path, structure)
                 
-                # Calculate residue depths (existing feature)
                 depth_dict = {}
                 if not skip_depth:
                     depth_dict = calculate_residue_depths(structure, pdb_path)
                 
-                # Calculate curvature for all residues
                 curvature_dict = calculate_curvature(structure)
                 
-                # Get structural neighbors and contact frequency
                 neighbors_dict, contact_freq_dict = get_structural_neighbors(structure)
                 
-                # Get B-factors and polar density
                 bfactor_dict, polar_density_dict = calculate_bfactor_and_polar_density(structure)
                 
-                # Parse residues from PDB
                 residues = parse_pdb(pdb_path)
                 
                 if not residues:
@@ -685,47 +575,38 @@ def store_feature_value(pdb_dir, output_file="binding_features.csv", skip_depth=
                 for position, residue, chain in residues:
                     properties = get_residue_properties(residue)
                     
-                    # Get secondary structure for this residue (if available)
                     sec_struct = "Unknown"
                     if chain in sec_struct_dict and position in sec_struct_dict[chain]:
                         sec_struct = sec_struct_dict[chain][position]
                     
-                    # Get ASA for this residue (if available)
                     asa = None
                     if chain in asa_dict and position in asa_dict[chain]:
                         asa = asa_dict[chain][position]
                     
-                    # Get residue depth (if available)
                     depth = None
                     if chain in depth_dict and position in depth_dict[chain]:
                         depth = depth_dict[chain][position]
                     
-                    # Get curvature (if available)
                     curvature = None
                     if chain in curvature_dict and position in curvature_dict[chain]:
                         curvature = curvature_dict[chain][position]
                     
-                    # Get neighbors (if available)
                     neighbors = ""
                     if chain in neighbors_dict and position in neighbors_dict[chain]:
                         neighbors = neighbors_dict[chain][position]
                     
-                    # Get contact frequency (if available)
                     contact_freq = None
                     if chain in contact_freq_dict and position in contact_freq_dict[chain]:
                         contact_freq = contact_freq_dict[chain][position]
                     
-                    # Get B-factor (if available)
                     bfactor = None
                     if chain in bfactor_dict and position in bfactor_dict[chain]:
                         bfactor = bfactor_dict[chain][position]
                     
-                    # Get polar density (if available)
                     polar_density = None
                     if chain in polar_density_dict and position in polar_density_dict[chain]:
                         polar_density = polar_density_dict[chain][position]
                     
-                    # Check if this residue is a binding site according to BioLiP
                     is_binding_site = 0
                     if pdb_name in binding_sites_dict and chain in binding_sites_dict[pdb_name] and position in binding_sites_dict[pdb_name][chain]:
                         is_binding_site = 1
@@ -751,9 +632,7 @@ def store_feature_value(pdb_dir, output_file="binding_features.csv", skip_depth=
             except Exception as e:
                 print(f"Error processing {filename}: {str(e)}")
             
-            # Save in batches to prevent data loss on interruption
             if batch_counter >= batch_size:
-                # Append to csv if it exists, otherwise create new file
                 if all_features:
                     mode = 'a' if processed_files > batch_size and os.path.exists(output_file) else 'w'
                     write_header = mode == 'w'
@@ -768,12 +647,10 @@ def store_feature_value(pdb_dir, output_file="binding_features.csv", skip_depth=
                     except Exception as e:
                         print(f"Error writing batch to output file: {str(e)}")
                 
-                # Reset for next batch
                 all_features = []
                 batch_counter = 0
                 batch_number += 1
            
-    # Write any remaining features to CSV
     if all_features:
         print(f"Processing complete. Found {len(all_features)} residue features in final batch.")
         
@@ -793,18 +670,16 @@ def store_feature_value(pdb_dir, output_file="binding_features.csv", skip_depth=
     print(f"Total processing complete. Processed {processed_files} files.")
 
 if __name__ == "__main__":
-    # Get command line arguments if provided, otherwise use defaults
+
     pdb_directory = "0_Raw_Data/ml_pdb"
-    output_file = "01_Feature_Data/feature_data.csv"
+    output_file="binding_features.csv"
 
     clean_directory = None
     clean_only = False
     
-    # Add command-line argument to skip depth calculation if MSMS is causing issues
     skip_depth = False
-    batch_size = 100  # Default batch size
+    batch_size = 100  
     
-    # Parse command line arguments
     i = 1
     while i < len(sys.argv):
         if sys.argv[i] == "--skip-depth":
@@ -813,7 +688,7 @@ if __name__ == "__main__":
         elif sys.argv[i] == "--batch-size" and i + 1 < len(sys.argv):
             try:
                 batch_size = int(sys.argv[i + 1])
-                i += 1  # Skip the next argument since we used it
+                i += 1  
             except ValueError:
                 print(f"Invalid batch size: {sys.argv[i+1]}. Using default: {batch_size}")
         elif sys.argv[i] == "--clean-dir" and i + 1 < len(sys.argv):
@@ -826,20 +701,13 @@ if __name__ == "__main__":
         elif not sys.argv[i].startswith("--") and i == 2:
             output_file = sys.argv[i]
         i += 1
-    
-    print(f"Using PDB directory: {pdb_directory}")
-    print(f"Output will be saved to: {output_file}")
-    print(f"Batch size: {batch_size}")
 
-    # Clean the PDB files first
     cleaned_files = clean_pdb_files(pdb_directory, clean_directory)
     
-    # If clean_only flag is set, exit after cleaning
     if clean_only:
-        print("Files cleaned. Exiting without further processing.")
+        print("Files cleaned.")
         sys.exit(0)
     
-    # If a clean directory was specified, use that for processing instead
     if clean_directory:
         pdb_directory = clean_directory
     
