@@ -25,7 +25,7 @@ AAT_PROPERTY = {
     "SecondaryStr": {'1': 'EALMQKRH', '2': 'VIYCWFT', '3': 'GNPSD'},
     "SolventAccessibility": {'1': 'ALFCGIVW', '2': 'RKQEND', '3': 'MPSTHY'},
     "Polarizability": {'1': 'GASDT', '2': 'CPNVEQIL', '3': 'KMHFRYW'}, 
-    "H-Bond Propensity": {'1': 'RKEQNDSTYH','2': 'WC','3': 'AGPFLIVM'}
+    "H-Bond_Propensity": {'1': 'RKEQNDSTYH','2': 'WC','3': 'AGPFLIVM'}
 }
 
 POLAR_CHARGED = 'RKEQDNHSTY'  
