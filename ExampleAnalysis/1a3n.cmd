@@ -1,4 +1,4 @@
-open /home/maider/Binding-Site-Predictor/ExampleAnalysis/1a3n.pdb
+open ./1a3n.pdb
 open 1a3n_sites.pdb
 style #0 cartoon
 color #0 gray
