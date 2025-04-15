@@ -24,7 +24,6 @@ import numpy as np
 import pandas as pd
 import glob
 import Feature_Extraction_01 as fe
-import Categorical_Data_Transformation_02_2 as transf
 from Bio.PDB import PDBParser, PDBIO, Select
 from argparse import ArgumentParser
 from joblib import load
@@ -223,7 +222,60 @@ def process_pdb_file(pdb_file, cleaned_pdb, model_path, skip_depth):
         features_df['Secondary_Structure'] = features_df['Secondary_Structure'].fillna(7)       
 
     #### Dealing with non-numerical values from Neighbor column
-    result_df = transf.extract_single_neighbor_feature(features_df)
+    def extract_single_neighbor_feature(df):
+        """Calculate and extract a single numerical score from the neighbors feature;
+        this calculation is based on the number of neighbors of each residue, the chain
+        and the proximity of other neighbors; the original column for neighbors is droped
+        in order to avoid inconsistences.""" 
+
+        result_df = df.copy()
+        
+        def calculate_neighbor_score(row):
+            neighbor_str = row['Neighbors']
+            if not pd.notnull(neighbor_str) or not str(neighbor_str).strip():
+                return 0
+                
+            neighbors = str(neighbor_str).split(',')
+            
+            if not neighbors or neighbors[0] == '':
+                return 0
+                
+            num_neighbors = len(neighbors)
+            chains = set()
+            same_chain_count = 0
+            diff_chain_count = 0
+            
+            current_chain = row.get('Chain', None)
+            
+            for item in neighbors:
+                if ':' in item:
+                    parts = item.split(':')
+                    if len(parts) == 2:
+                        chain = parts[0]
+                        chains.add(chain)
+                        
+                        if current_chain is not None:
+                            if chain == current_chain:
+                                same_chain_count += 1
+                            else:
+                                diff_chain_count += 1
+            
+            chain_diversity = len(chains) / max(1, num_neighbors)
+            
+            weighted_interactions = (same_chain_count + 3 * diff_chain_count) / max(1, num_neighbors)
+            
+            neighbor_score = num_neighbors * (0.3 + 0.7 * (chain_diversity * weighted_interactions))
+            
+            return neighbor_score
+    
+        result_df['Neighbor_Score'] = result_df.apply(calculate_neighbor_score, axis=1)
+        
+        # Drop the original neighbors column 
+        result_df = result_df.drop(columns=['Neighbors'])
+        
+        return result_df
+
+    result_df = extract_single_neighbor_feature(features_df)
     
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(result_df)  
@@ -359,8 +411,10 @@ def main():
             for orig_file in pdb_files:
                 if os.path.dirname(orig_file) == dir_path:
                     base_name = os.path.basename(orig_file)
+                    base_without_ext = os.path.splitext(base_name)[0]
                     for cleaned_file in cleaned_files:
-                        if os.path.basename(cleaned_file) == base_name:
+                        cleaned_base = os.path.basename(cleaned_file)
+                        if cleaned_base == f"clean_{base_without_ext}.pdb":
                             cleaned_pdbs[orig_file] = cleaned_file
                             break
                     if orig_file not in cleaned_pdbs:
